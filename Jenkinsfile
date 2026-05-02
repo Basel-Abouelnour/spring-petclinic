@@ -49,6 +49,8 @@ pipeline {
         stage('Cleaning Old Docker Images') {
             steps {
                 sh "docker image prune --force"
+                sh "docker stop `docker ps -aq` || true"
+                sh "docker rm `docker ps -aq` || true"
             }
         }
         stage('Build Docker Image') {
@@ -65,11 +67,29 @@ pipeline {
                 docker push "$DOCKER_CREDS_USR/spring-app:$DATE"
                 '''
                 }
+        }
+        stage('Deploy to local docker') {
+            steps {
+                sh '''
+                docker run -d -p 8888:8888 --name spring-petclinic --pull always $DOCKER_CREDS_USR/spring-app:latest
+                '''
             }
+        }
+        stage('Smoke Test') {
+            steps {
+                sh '''
+                sleep 10
+                curl -f http://localhost:8888/ || exit 1
+                '''
+            }
+        }
     }
+
+    
+
     post { 
         always { 
-            sh 'docker rm --force $(docker ps -aq)'
+            // sh 'docker rm --force $(docker ps -aq)'
             sh 'docker system prune --force --all'
         }   
     }
