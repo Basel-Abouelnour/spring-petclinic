@@ -67,10 +67,10 @@ pipeline {
                 }
             }
     }
-    // post { 
-    //     always { 
-    //         sh 'docker rm --force $(docker ps -aq)'
-    //         sh 'docker system prune --force --all'
-    //     }   
-    // }
+    post { 
+        always { 
+            sh 'docker rm --force $(docker ps -aq)'
+            sh 'docker system prune --force --all'
+        }   
+    }
 }
