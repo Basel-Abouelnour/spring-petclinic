@@ -2,6 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_CREDS = credentials('docker-username-password')
+        DATE = sh(script: 'date +%Y%m%d-%H%M%S', returnStdout: true).trim()
     }
     tools {
         // Install the Maven version configured as "M3" and add it to the path.
@@ -52,16 +53,16 @@ pipeline {
         }
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_CREDS_USR/spring-app:`date +%Y%m%d-%H%M%S` .'
+                sh 'docker build -t $DOCKER_CREDS_USR/spring-app:$DATE .'
             }
         }
         stage('Push Docker Image') {
             steps {
                 sh '''
                 echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin
-                docker tag $DOCKER_CREDS_USR/spring-app:`date +%Y%m%d-%H%M%S` $DOCKER_CREDS_USR/spring-app:latest
+                docker tag $DOCKER_CREDS_USR/spring-app:$DATE $DOCKER_CREDS_USR/spring-app:latest
                 docker push "$DOCKER_CREDS_USR/spring-app:latest"
-                docker push "$DOCKER_CREDS_USR/spring-app:`date +%Y%m%d-%H%M%S`"
+                docker push "$DOCKER_CREDS_USR/spring-app:$DATE"
                 '''
                 }
             }
