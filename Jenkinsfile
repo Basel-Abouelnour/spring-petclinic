@@ -1,6 +1,8 @@
 pipeline {
     agent any
-
+    environment {
+        DOCKER_CREDS = credentials('docker-username-password')
+    }
     tools {
         // Install the Maven version configured as "M3" and add it to the path.
         jdk "jdk-17"
@@ -13,7 +15,7 @@ pipeline {
             }
             steps {
                 git branch: 'main', changelog: false, poll: false,
-                    url: 'https://github.com/spring-projects/spring-petclinic.git'
+                    url: 'https://github.com/Basel-Abouelnour/spring-petclinic.git'
             }
         }
         stage('Change Application Port'){
@@ -40,19 +42,34 @@ pipeline {
                 // Get some code from a GitHub repository
                 // Run Maven on a Unix agent.
                 sh "mvn package"
+                sh "ls"
             }
         }
-        stage('Run') {
+        stage('Cleaning Old Docker Images') {
             steps {
-                sh "nohup java -jar target/spring-petclinic-*.jar --server.port=8888 > app.log 2>&1 &"
-                sh "sleep 10"
+                sh "docker image prune --force"
             }
         }
-        stage('Connectivity Test') {
+        stage('Build Docker Image') {
             steps {
-                sh " curl -kv localhost:8888 "
+                sh 'docker build -t $DOCKER_CREDS_USR/spring-app:`date +%Y%m%d-%H%M%S` .'
             }
         }
+        stage('Push Docker Image') {
+            steps {
+                sh '''
+                echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin
+                docker tag $DOCKER_CREDS_USR/spring-app:`date +%Y%m%d-%H%M%S` $DOCKER_CREDS_USR/spring-app:latest
+                docker push "$DOCKER_CREDS_USR/spring-app:latest"
+                docker push "$DOCKER_CREDS_USR/spring-app:`date +%Y%m%d-%H%M%S`"
+                '''
+                }
             }
-        
     }
+    post { 
+        always { 
+            sh 'docker rm --force $(docker ps -aq)'
+            sh 'docker system prune --force --all'
+        }   
+    }
+}
